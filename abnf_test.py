@@ -5,3 +5,4 @@ handler=abnf('myname        =  *5("Hallo" %x45 1*88("Fasel" ["Optional"]))',"blu
 print ("Haalo")
 print("regex",handler.get_regex())
 print("name",handler.get_name())
+print (abnf.__doc__)

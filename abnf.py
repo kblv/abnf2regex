@@ -107,7 +107,7 @@ class abnf(object):
                 name -> the name of the abnf in lower case
         """
         if not self.__name:
-            self.__abnfupdate(self.__abnf)
+            self.__self.__seperatename(self.__abnf)
         return self.__name
 
     def __cleanup(self,abnf):
@@ -131,7 +131,7 @@ class abnf(object):
                 value -> The actual number (without the prefix and the %)
             Returns:
                 char -> The character representation of the terminalvalue \
-                    as string
+                    as string (escaped if needed)
         """
         if prefix == "b":
             char=b2a_qp(binvalue)
@@ -140,7 +140,7 @@ class abnf(object):
         if prefix == 'x':
             print ("Value:", value)
             char=binascii.unhexlify(value).decode()
-        return char
+        return regex.escape(char)
 
     def __rulename(self,abnf):
         """Internal method translating rulenames into the content of the rules
@@ -336,7 +336,7 @@ class abnf(object):
         print ("__dquote")
         print ("double quote", match.group("content"))
         print (match.end())
-        return abnf[match.end():],match.group("content")
+        return abnf[match.end():],regex.escape(match.group("content"))
 
     def __generalfunction(self,abnf,chkhowmany=0):
         """Internal main processing function - calls all the abnf processing \
