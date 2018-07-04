@@ -1,4 +1,5 @@
 from abnf import abnf
+from exceptions import *
 
 class abnfs (object):
     """List of abnfs (abnf objects)- used by abnf class to lookup sub-abnfs
@@ -10,7 +11,7 @@ class abnfs (object):
                 appended abnf object)
             get_regex -> get the regex for a certain abnf with a name
             get_all_regex -> get all the abnf names and there regular expression \
-                representation stored in this abnfs object 
+                representation stored in this abnfs object
     """
 
     def __init__(self, abnflist=None):
@@ -36,9 +37,11 @@ class abnfs (object):
                     (probably besides others) of at least one sub-anf for which \
                     there is no definition in the abnfs object
         """
-        expression=self.__abnfobjectdict.get(abnfname).get_regex()
-        return expression
 
+        abnfobject=self.__abnfobjectdict.get(abnfname)
+        if not abnfobject:
+            raise MissingABNFError(abnfname)
+        return abnfobject.get_regex()
 
     def get_all_regex(self):
         """Returns the regular Expressions for all abnf of the object

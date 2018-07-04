@@ -34,3 +34,21 @@ class InvalidABNFError(Exception):
     def __str__(self):
         """Called when the reason phrase should be printed"""
         return self.message
+
+
+class MissingABNFError(Exception):
+    """Exception thrown in case a abnf which is part of another abnf \
+        could not be resolved (is not in abnfs-object)
+    """
+
+    def __init__(self,missing_abnf_name):
+        """Initialization of Excption.
+
+            Attributes:
+                missing_abnf_name -> name of the abnf which could not be resolved
+        """
+        self._message="ABNF " + missing_abnf_name + " is not defined."
+
+    def __str__(self):
+        """Returns error message"""
+        return self._message

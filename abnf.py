@@ -155,13 +155,10 @@ class abnf(object):
             raise NotMatchingABNFError("__rulename",abnf)
         print ("__rulename")
         rulename=match.group("rulename").lower()
-        try:
-            expression=self.__abnfprimitives[rulename]
-        except KeyError:
+        expression=self.__abnfprimitives.get(rulename)
+        if not expression:
             #Here must be the lookup into the global tabel
             expression=self.__getababnfmethod(rulename)
-            print("Key Error")
-            pass
         return abnf[match.end():],expression
 
     def __comment(self,abnf):
