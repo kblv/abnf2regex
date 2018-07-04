@@ -78,10 +78,6 @@ class abnf(object):
         self.__name,abnf=self.__seperatename(self.__abnf)
         abnf,self.__regex=self.__generalfunction(abnf)
 
-        #Here must be the update of the global abnflist
-        #it needs to be checked whether the rule is already in the list
-        #if yes append to the existing entry
-
     def get_regex(self,forceregen=False):
         """Returns the regex representation of the abnf.
 
@@ -107,7 +103,7 @@ class abnf(object):
                 name -> the name of the abnf in lower case
         """
         if not self.__name:
-            self.__self.__seperatename(self.__abnf)
+            self.__name, notofinterest=self.__seperatename(self.__abnf)
         return self.__name
 
     def __cleanup(self,abnf):
@@ -163,6 +159,7 @@ class abnf(object):
             expression=self.__abnfprimitives[rulename]
         except KeyError:
             #Here must be the lookup into the global tabel
+            expression=self.__getababnfmethod(rulename)
             print("Key Error")
             pass
         return abnf[match.end():],expression
