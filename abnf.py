@@ -352,7 +352,7 @@ class abnf(object):
         abnf=self.__cleanup(abnf)
         while len(abnf)>0:
             print (abnf)
-            print ("Länge ABNF",len(abnf))
+            print ("Lange ABNF",len(abnf))
             for callnumber,function in enumerate(self.__processfunctions):
                 try:
                     print ("abnf vor funktionsaufruf:",abnf)

@@ -1,0 +1,17 @@
+Global-Failure  =  "600"  ;  Busy Everywhere
+               /   "603"  ;  Decline
+               /   "604"  ;  Does not exist anywhere
+               /   "606"  ;  Not Acceptable
+extension-header  =  header-name HCOLON header-value
+HCOLON  =  *( SP / HTAB ) ":" SWS
+SWS  =  [LWS] ; sep whitespace
+header-name       =  token
+token       =  1*(alphanum / "-" / "." / "!" / "%" / "*"
+                     / "_" / "+" / "`" / "'" / "~" )
+alphanum  =  ALPHA / DIGIT
+header-value      =  *(TEXT-UTF8char / UTF8-CONT / LWS)
+TEXT-UTF8char   =  %x21-7E
+UTF8-CONT       =  %x30-35
+LWS  =  [*WSP CRLF] 1*WSP ; linear whitespace
+WSP            =  SP / HTAB
+CRLF           =  CR LF

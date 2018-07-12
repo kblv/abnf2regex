@@ -66,7 +66,12 @@ class abnfs (object):
         """Adds a abnf to the abnfs object
 
             Arguments:
-                abnfstring -> The abnf (including the rule name)
+                abnfstring -> The abnf (including the rule name) \
+                    It is expected that it is a one-line ABNF. \
+                    The RFC allows that the ABNF is spread across multiple lines \
+                    which even could have comments at there end per line. \
+                    If that is the case that needs to be cleaned up before \
+                    passing it
         """
         abnfobject=abnf(abnfstring,self.get_regex)
         self.__abnfobjectdict.update({abnfobject.get_name():abnfobject})
