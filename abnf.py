@@ -119,7 +119,7 @@ class abnf(object):
         abnf=regex.sub("^\s*","",abnf)
         return abnf
 
-    def __convertterminalvalue(self,prefix,value):
+    def __convertterminalvalue(self,prefix,value,**kwargs):
         """Internal method converts "terminal values" to characters
 
             Parameters:
@@ -161,7 +161,7 @@ class abnf(object):
             expression=self.__getababnfmethod(rulename)
         return abnf[match.end():],expression
 
-    def __comment(self,abnf):
+    def __comment(self,abnf,**kwargs):
         """Internal method removing comments from the abnf.
 
             Parameters:
@@ -179,7 +179,7 @@ class abnf(object):
         #end of the abnf rule and it is not part of the rule
         return "",""
 
-    def __optionalsequence(self,abnf):
+    def __optionalsequence(self,abnf,**kwargs):
         """Internal method handling optionalsequence from the RFC.
 
             Sequences enclosed in [].
@@ -195,10 +195,10 @@ class abnf(object):
         if not match:
             raise NotMatchingABNFError("__optionalsequence",abnf)
         print ("__optionalsequence")
-        notofinterest,expression=self.__generalfunction(match.group("content"))
+        notofinterest,expression=self.__generalfunction(match.group("content"),**kwargs)
         return abnf[match.end():],"("+expression+")?"
 
-    def __variablerepetition(self,abnf):
+    def __variablerepetition(self,abnf,**kwargs):
         """Internal method handling variablerepetition from the RFC.
 
             Element prefixed with a number, or *, or number*number, or \
@@ -232,11 +232,11 @@ class abnf(object):
         #Get regular expression for next (foolow up) element -> the repetition is
         #in abnf before the elment, in regex after it
         print ("__variablerepetition before self.__generalfunction",abnf[match.end():])
-        abnf,expression=self.__generalfunction(abnf[match.end():],chkhowmany=1)
+        abnf,expression=self.__generalfunction(abnf[match.end():],chkhowmany=1,**kwargs)
         expression="("+expression+"){"+str(min)+","+str(max)+"}"
         return abnf, expression
 
-    def __sequencegroup(self,abnf):
+    def __sequencegroup(self,abnf,**kwargs):
         """Internal method handling sequencegroups from the RFC.
 
             Actual groups - elements grouped in ()
@@ -253,11 +253,110 @@ class abnf(object):
         if not match:
             raise NotMatchingABNFError("__sequencegroup",abnf)
         print ("__sequencegroup")
-        notofinterest, expression=self.__generalfunction(match.group("content"))
+        notofinterest, expression=self.__generalfunction(match.group("content"),**kwargs)
         expression="("+expression+")"
         return abnf[match.end():], expression
 
-    def __terminalvalue(self,abnf):
+    #kwargs has no function in this case
+    def _terminalvalue_check_completestring(self,abnf,requiretype=None,**kwargs):
+        """Sub-Method of __terminalvalue - Checks the abnf for a terminalvalue \
+
+         Terminalvalue in the sense of this method is a string starting with
+         b, d or x followed by one or more digits
+
+         Parameter:
+            - abnf -> The abnf to be parsed
+            - requiretype -> Optional the expected type. If the terminalvalue \
+                is not of the expected type return value "terminalvalue" will \
+                be None -> as there was no terminalvalue found
+        Return-value:
+            - restabnf -> The rest of the abnf - everything except the \
+                terminalvalue / everything which has been passed to the method \
+                if no terminalvalue has been found
+            - terminalvalue -> list containing at first position the type \
+                (b,d,x) and at second position the terminalvalue (the number). \
+                Is of type None in case there is no terminalvalue at the \
+                beginning of the string
+        """
+        match=regex.match('%(?<type>[bdx])(?<numbers>[0-9A-Z]+)',abnf)
+        if match and ((requiretype and match.group("type")==requiretype) or  \
+            not requiretype):
+            terminalvalue=list([match.group("type"),match.group("numbers")])
+            restabnf=abnf[match.end():]
+        else:
+            terminalvalue=None
+            restabnf=abnf
+        return restabnf,terminalvalue
+
+    #kwargs has no function in this case
+    def _terminalvalue_check_dot(self,abnf,**kwargs):
+        """Sub-Method of __terminalvalue - Checks for extended termvalue (.xy) \
+
+         Extended terminalvalue in the sense of the method is when a \
+         terminalvalue has another one appended by "." -> like %45.46
+
+         Parameter:
+            - abnf -> The abnf to be parsed
+        Return-value:
+            - restabnf -> The rest of the abnf - everything except the \
+                terminalvalue / everything which has been passed to the method \
+                if no terminalvalue has been found
+            - terminalvalue -> containing the terminalvalue (just the hex \
+                digits) or None if nothing has been found
+        """
+        match=regex.match('\.[0-9A-Z]+',restabnf)
+        if match:
+            terminalvalue=match.group()
+            restabnf=abnf[match.end():]
+        else:
+            terminalvalue=None
+            restabnf=abnf
+        return restabnf, terminalvalue
+
+    def _terminalvalue_check_rule(self,abnf,**kwargs):
+        """Sub-Method of __terminalvalue - Checks for termvalue in rule \
+
+         Some RFC (for exapmle RFC 3261) putting parts of the terminal value
+         into own rule names. This method "resolves" the rulenames and checks
+         for terminalvalues.
+         The method returns a terminalvalue just in case that the keyword
+         definition is a terminalvalue and in addition it is a complete \
+         terminalvalue (starting with %) starting with the prefix defined in \
+         parameter "requiredprefix" or if it is a partial or a extended \
+         terminalvalue (in the last both cases there is no prefix)
+
+         Parameter:
+            - abnf -> The abnf to be parsed
+            - named parameter (kwargs) "requiredprefix" -> The prefix (b,d or x) the"tesla model 3" wltp
+                terminalvalue needs to have.
+        Return-value:
+            - restabnf -> The rest of the abnf - everything except the \
+                terminalvalue / everything which has been passed to the method \
+                if no terminalvalue has been found
+            - terminalvalue -> containing the terminalvalue (just the hex \
+                digits) or None if nothing has been found
+        """
+        checkmethods=list()
+        checkmethods.append(self._terminalvalue_check_dot)
+        checkmethods.append(self._terminalvalue_check_completestring)
+        if not kwargs["requiredprefix"]:
+            raise ValueError('Parameter \"requiredprefix\" required when \
+                calling \"_terminalvalue_check_rule\"')
+        restabnf,expression=self.__rulename(self,abnf,terminalvaluenoparse=True,**kwargs)
+        for method in checkmethods:
+            restabnf,terminalvalue=method(expression,**kwargs)
+            if terminalvalue:
+                break
+        #In case it was not resolveable into a terminal value
+        #or it has a different prefix than required
+        if not terminalvalue or (type(terminalvalue)==dict and \
+            terminalvalue["type"] != kwargs["requiredprefix"]):
+            return abnf, None
+        if type(terminalvalue)==dict:
+            terminalvalue=terminalvalue["numbers"]
+        return restabnf, terminalvalue
+
+    def __terminalvalue(self,abnf,**kwargs):
         """Internal method handling terminalvalues from the RFC.
 
             Hex value, bin values, decimal values which needs to be chars
@@ -269,21 +368,41 @@ class abnf(object):
                     - the terminalvalue)
                 expression -> the character represented by the terminalvalue
         """
-        expression=str()
-        #match=regex.match('%(?<type>[bdx])(?<first>[0-9A-Z]+)(\.(?<more>([0-9A-Z])+))*',abnf)
-        #match=regex.match('%(?<type>[bdx])(?<first>[0-9A-Z]+)(?<more>(\.[0-9A-Z]+)*)',abnf)
-        match=regex.match('%(?<type>[bdx])(?<numbers>[0-9A-Z]+((\.[0-9A-Z]+)*))',abnf)
-        if not match:
+        terminalvalue=str()
+        type=str()
+        checkmethods=list()
+        checkmethods.append(self._terminalvalue_check_rule)
+        checkmethods.append(self._terminalvalue_check_dot)
+        checkmethods.append(self._terminalvalue_check_completestring)
+        restabnf,value=self._terminalvalue_check_completestring(abnf,**kwargs)
+        if not value:
             raise NotMatchingABNFError("__terminalvalue",abnf)
-        print ("__terminalvalue")
-        #expression=__convertterminalvalue(match.group("type"),match.group("first"))
-        #if match.group("more"):
-        for value in regex.split('\.',match.group("numbers")):
-            print(match.group("type"),value)
-            expression+=self.__convertterminalvalue(match.group("type"),value)
-        return abnf[match.end():], expression
+        type=value[0]
+        terminalvalue=value[1]
+        #This is for detecting when we have checked all methods and none
+        #matched -> we have reached the end of the terminalvalue
+        print (restabnf)
+        print (value)
+        try:
+            while len(restabnf) > 0:
+                for looprun,checkmethod in enumerate,checkmethods:
+                    restabnf,value=checkmethod(restabnf,requiredprefix,**kwargs)
+                    if value:
+                        if type(value) == dict:
+                            value=value["numbers"]
+                        terminalvalue+=value
+                        break
+                    if looprun == len(checkmethods)-1:
+                        raise NotMatchingABNFError("__terminalvalue-submethods",restabnf)
+        except NotMatchingABNFError:
+            pass
+        if kwargs.get(terminalvaluenoparse):
+            terminalvaluecharacters=terminalvalue
+        else:
+            terminalvaluecharacters=self.__convertterminalvalue(type,terminalvalue,**kwargs)
+        return restabnf, terminalvaluecharacters
 
-    def __valuerange(self,abnf):
+    def __valuerange(self,abnf,**kwargs):
         """Internal method handling valueranges from the RFC.
 
             Ranges of terminalvalues
@@ -299,18 +418,18 @@ class abnf(object):
         if not match:
             raise NotMatchingABNFError("__valuerange",abnf)
         print ("__valuerange")
-        firstchar=self.__convertterminalvalue(match.group("type"),match.group("first"))
-        secondchar=self.__convertterminalvalue(match.group("type"),match.group("second"))
+        firstchar=self.__convertterminalvalue(match.group("type"),match.group("first"),**kwargs)
+        secondchar=self.__convertterminalvalue(match.group("type"),match.group("second"),**kwargs)
         return abnf[match.end():], '['+firstchar+'-'+secondchar+']'
 
-    def __alternative(self,abnf):
+    def __alternative(self,abnf,**kwargs):
         match=regex.match("\=?/",abnf)
         if not match:
             raise NotMatchingABNFError("__alternative",abnf)
         print ("__alternative")
         return abnf[match.end():],"|"
 
-    def __dquote(self,abnf):
+    def __dquote(self,abnf,**kwargs):
         """Internal method handling dquotes/double quotes from the RFC.
 
             raw strings enclosed in ""
@@ -332,7 +451,7 @@ class abnf(object):
         print (match.end())
         return abnf[match.end():],regex.escape(match.group("content"))
 
-    def __generalfunction(self,abnf,chkhowmany=0):
+    def __generalfunction(self,abnf,chkhowmany=0,**kwargs):
         """Internal main processing function - calls all the abnf processing \
         functions
 
@@ -356,7 +475,7 @@ class abnf(object):
             for callnumber,function in enumerate(self.__processfunctions):
                 try:
                     print ("abnf vor funktionsaufruf:",abnf)
-                    abnf, retexpression=function(abnf)
+                    abnf, retexpression=function(abnf,**kwargs)
                     expression+=retexpression
                     break
                 except NotMatchingABNFError:
